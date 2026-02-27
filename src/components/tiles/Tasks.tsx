@@ -8,10 +8,7 @@ type Props = {
   taskError: string | null;
   hasUploadedPublicKey: boolean;
   pendingSigningTargets: ParticipantSnapshot[];
-  selectedSigningTargetId: string | null;
-  selectedSigningTarget: ParticipantSnapshot | null;
   publicKeys: Record<string, string>;
-  onSelectSigningTarget: (clientId: string) => void;
   onUploadPublicKey: (armoredPublicKey: string) => Promise<void> | void;
   onUploadSignedKey: (
     targetClientId: string,
@@ -26,14 +23,15 @@ export function Tasks({
   taskError,
   hasUploadedPublicKey,
   pendingSigningTargets,
-  selectedSigningTargetId,
-  selectedSigningTarget,
   publicKeys,
-  onSelectSigningTarget,
   onUploadPublicKey,
   onUploadSignedKey,
   onDownloadParticipantKey,
 }: Props) {
+  const actionableTargets = pendingSigningTargets.filter(
+    (participant) => !!publicKeys[participant.clientId],
+  );
+
   return (
     <section className="flex min-h-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4">
       {lastError ? <p className="m-0 mt-2 text-sm text-red-200">{lastError}</p> : null}
@@ -52,84 +50,67 @@ export function Tasks({
           />
         </div>
       ) : (
-        <div className="mt-3 flex min-h-0 flex-1 flex-col space-y-3">
+        <div className="mt-3 flex min-h-0 flex-1 flex-col">
           <p className="m-0 text-sm text-white/80">
             Remaining people for you to sign:{" "}
-            <span className="font-semibold text-cyan-200">{pendingSigningTargets.length}</span>
+            <span className="font-semibold text-cyan-200">{actionableTargets.length}</span>
           </p>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {pendingSigningTargets.map((participant) => {
+          <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            {actionableTargets.map((participant) => {
               const key = publicKeys[participant.clientId];
-              const isSelected = participant.clientId === selectedSigningTargetId;
+              const safeName = participant.displayName
+                .trim()
+                .replaceAll(/\s+/g, "-")
+                .toLowerCase();
+              const keyFile = `${safeName || participant.clientId}.asc`;
+
               return (
-                <div
+                <article
                   key={participant.clientId}
-                  className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-                    isSelected ? "border-cyan-300 bg-cyan-500/10" : "border-white/15 bg-black/20"
-                  }`}
+                  className="rounded-lg border border-white/15 bg-black/20 p-3"
                 >
-                  <button
-                    type="button"
-                    onClick={() => onSelectSigningTarget(participant.clientId)}
-                    className="text-left text-sm font-semibold text-white"
-                  >
-                    {participant.displayName}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!key}
-                    onClick={() => onDownloadParticipantKey(participant)}
-                    className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Download
-                  </button>
-                </div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="m-0 text-sm text-white/80">
+                      Sign <span className="font-semibold">{participant.displayName}</span> locally
+                    </p>
+                    <button
+                      type="button"
+                      disabled={!key}
+                      onClick={() => onDownloadParticipantKey(participant)}
+                      className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Download key
+                    </button>
+                  </div>
+
+                  <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75">
+                    <code>{`gpg --import ./${keyFile}
+gpg --sign-key "TARGET_USER_ID_OR_FINGERPRINT"
+gpg --armor --export "TARGET_USER_ID_OR_FINGERPRINT" > signed-${keyFile}`}</code>
+                  </pre>
+
+                  <div className="mt-3">
+                    <ArmoredDropzone
+                      title={`Upload signed key for ${participant.displayName}`}
+                      message="Drag signed public key file here"
+                      disabled={connectionState !== "open"}
+                      onFileLoaded={async (armoredSignedKey) => {
+                        await onUploadSignedKey(participant.clientId, armoredSignedKey);
+                      }}
+                    />
+                  </div>
+                </article>
               );
             })}
-            {pendingSigningTargets.length === 0 ? (
+            {actionableTargets.length === 0 ? (
               <p className="m-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/60">
                 No remaining signatures needed from you right now.
               </p>
             ) : null}
           </div>
-
-          {selectedSigningTarget ? (
-            <>
-              <div className="rounded-lg border border-white/15 bg-black/25 p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="m-0 text-sm text-white/80">
-                    Sign <span className="font-semibold">{selectedSigningTarget.displayName}</span> locally:
-                  </p>
-                  <button
-                    type="button"
-                    disabled={!publicKeys[selectedSigningTarget.clientId]}
-                    onClick={() => onDownloadParticipantKey(selectedSigningTarget)}
-                    className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Download key
-                  </button>
-                </div>
-                <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75">
-                  <code>{`gpg --import ./TARGET_PUBLIC_KEY.asc
-gpg --sign-key "TARGET_USER_ID_OR_FINGERPRINT"
-gpg --armor --export "TARGET_USER_ID_OR_FINGERPRINT" > signed-target.asc`}</code>
-                </pre>
-              </div>
-              <ArmoredDropzone
-                title={`Upload signed key for ${selectedSigningTarget.displayName}`}
-                message="Drag signed public key file here"
-                stretch
-                disabled={connectionState !== "open"}
-                onFileLoaded={async (armoredSignedKey) => {
-                  await onUploadSignedKey(selectedSigningTarget.clientId, armoredSignedKey);
-                }}
-              />
-            </>
-          ) : null}
         </div>
       )}
     </section>
   );
 }
-

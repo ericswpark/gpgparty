@@ -103,9 +103,6 @@ function connectionLabel(state: "connecting" | "open" | "closed"): string {
 
 export function Session({ roomCode }: Props) {
   const [displayName, setDisplayName] = useState(randomGuestName);
-  const [selectedSigningTargetDraft, setSelectedSigningTargetDraft] = useState<
-    string | null
-  >(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const lastAlertedErrorRef = useRef<string | null>(null);
 
@@ -155,30 +152,6 @@ export function Session({ roomCode }: Props) {
         ),
     );
   }, [clientId, snapshot]);
-
-  const selectedSigningTargetId = useMemo(() => {
-    if (pendingSigningTargets.length === 0) {
-      return null;
-    }
-
-    const hasCurrent = pendingSigningTargets.some(
-      (participant) => participant.clientId === selectedSigningTargetDraft,
-    );
-    return hasCurrent
-      ? selectedSigningTargetDraft
-      : pendingSigningTargets[0].clientId;
-  }, [pendingSigningTargets, selectedSigningTargetDraft]);
-
-  const selectedSigningTarget = useMemo(() => {
-    if (!selectedSigningTargetId) {
-      return null;
-    }
-    return (
-      pendingSigningTargets.find(
-        (participant) => participant.clientId === selectedSigningTargetId,
-      ) ?? null
-    );
-  }, [pendingSigningTargets, selectedSigningTargetId]);
 
   const mySignedPublicKeys = useMemo(() => {
     if (!snapshot) {
@@ -339,10 +312,7 @@ export function Session({ roomCode }: Props) {
               taskError={taskError}
               hasUploadedPublicKey={self?.hasPublicKey === true}
               pendingSigningTargets={pendingSigningTargets}
-              selectedSigningTargetId={selectedSigningTargetId}
-              selectedSigningTarget={selectedSigningTarget}
               publicKeys={snapshot?.publicKeys ?? {}}
-              onSelectSigningTarget={setSelectedSigningTargetDraft}
               onUploadPublicKey={handleUploadPublicKey}
               onUploadSignedKey={handleUploadSignedKey}
               onDownloadParticipantKey={downloadParticipantKey}
