@@ -1,4 +1,3 @@
-import { readKey } from "openpgp";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Graph } from "./tiles/Graph";
 import { usePartyRoom } from "../hooks/usePartyRoom";
@@ -8,6 +7,13 @@ import type { SessionSnapshot } from "../../shared/protocol";
 import type { ParticipantSnapshot } from "../../shared/protocol";
 import { Downloads } from "./tiles/Downloads";
 import { Tasks } from "./tiles/Tasks";
+import {
+  containsPrivateKeyBlock,
+  extractFingerprintFromArmoredPublicKey,
+  extractNameFromArmoredPublicKey,
+  hasAnyThirdPartyCertification,
+  hasOwnCertificationOnKey,
+} from "../lib/pgp";
 
 type Props = {
   roomCode: string;
@@ -49,91 +55,6 @@ const EMPTY_SNAPSHOT: SessionSnapshot = {
 };
 const DUPLICATE_PUBKEY_MESSAGE =
   "Oops, this person already exists within this room. Please upload your own pubkey.";
-
-async function extractNameFromArmoredPublicKey(
-  armoredKey: string,
-): Promise<string | null> {
-  try {
-    const key = await readKey({ armoredKey });
-    const [firstUserId] = key.getUserIDs();
-    if (!firstUserId) {
-      return null;
-    }
-
-    const withoutEmail = firstUserId.replace(/<[^>]*>/g, " ").trim();
-    const withoutComment = withoutEmail.replace(/\([^)]*\)/g, " ").trim();
-    const parsed = withoutComment.replace(/\s+/g, " ");
-    return parsed || null;
-  } catch {
-    return null;
-  }
-}
-
-async function extractFingerprintFromArmoredPublicKey(
-  armoredKey: string,
-): Promise<string | null> {
-  try {
-    const key = await readKey({ armoredKey });
-    return key.getFingerprint().toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-async function hasOwnCertificationOnKey(
-  armoredSignedKey: string,
-  armoredSignerPublicKey: string,
-): Promise<boolean> {
-  try {
-    const signedKey = await readKey({ armoredKey: armoredSignedKey });
-    const signerKey = await readKey({ armoredKey: armoredSignerPublicKey });
-    const signerPublicKey = signerKey.isPrivate() ? signerKey.toPublic() : signerKey;
-    const signerKeyIds = new Set(
-      signerPublicKey
-        .getKeyIDs()
-        .map((keyId) => keyId.toHex().toLowerCase()),
-    );
-
-    for (const user of signedKey.users) {
-      for (const certification of user.otherCertifications) {
-        const issuerKeyId = certification.issuerKeyID?.toHex().toLowerCase();
-        if (!issuerKeyId || !signerKeyIds.has(issuerKeyId)) {
-          continue;
-        }
-
-        try {
-          const verified = await user.verifyCertificate(certification, [
-            signerPublicKey,
-          ]);
-          if (verified === true) {
-            return true;
-          }
-        } catch {
-          // Ignore malformed or unverifiable certs and continue checking.
-        }
-      }
-    }
-
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-async function hasAnyThirdPartyCertification(
-  armoredSignedKey: string,
-): Promise<boolean> {
-  try {
-    const key = await readKey({ armoredKey: armoredSignedKey });
-    return key.users.some((user) => user.otherCertifications.length > 0);
-  } catch {
-    return false;
-  }
-}
-
-function containsPrivateKeyBlock(value: string): boolean {
-  return /-----BEGIN PGP (PRIVATE|SECRET) KEY BLOCK-----/i.test(value);
-}
 
 function connectionLabel(state: "connecting" | "open" | "closed"): string {
   if (state === "open") {
@@ -231,7 +152,9 @@ export function Session({ roomCode }: Props) {
 
     const files: { fileName: string; content: string }[] = [];
 
-    for (const [participantId, armoredKey] of Object.entries(snapshot.publicKeys)) {
+    for (const [participantId, armoredKey] of Object.entries(
+      snapshot.publicKeys,
+    )) {
       const participant = snapshot.participants.find(
         (entry) => entry.clientId === participantId,
       );
@@ -244,13 +167,17 @@ export function Session({ roomCode }: Props) {
       });
     }
 
-    for (const [signerId, signedBySigner] of Object.entries(snapshot.signedKeys)) {
+    for (const [signerId, signedBySigner] of Object.entries(
+      snapshot.signedKeys,
+    )) {
       const signer = snapshot.participants.find(
         (entry) => entry.clientId === signerId,
       );
       const signerLabel = normalizeFileName(signer?.displayName ?? signerId);
 
-      for (const [targetId, signedArmoredKey] of Object.entries(signedBySigner)) {
+      for (const [targetId, signedArmoredKey] of Object.entries(
+        signedBySigner,
+      )) {
         const target = snapshot.participants.find(
           (entry) => entry.clientId === targetId,
         );
@@ -311,7 +238,8 @@ export function Session({ roomCode }: Props) {
       }
     }
 
-    const extractedName = await extractNameFromArmoredPublicKey(armoredPublicKey);
+    const extractedName =
+      await extractNameFromArmoredPublicKey(armoredPublicKey);
     if (extractedName) {
       setDisplayName(extractedName);
     }
@@ -346,11 +274,12 @@ export function Session({ roomCode }: Props) {
       return;
     }
 
-    const [uploadedFingerprint, targetFingerprint, myFingerprint] = await Promise.all([
-      extractFingerprintFromArmoredPublicKey(armoredSignedKey),
-      extractFingerprintFromArmoredPublicKey(targetArmoredKey),
-      extractFingerprintFromArmoredPublicKey(myArmoredKey),
-    ]);
+    const [uploadedFingerprint, targetFingerprint, myFingerprint] =
+      await Promise.all([
+        extractFingerprintFromArmoredPublicKey(armoredSignedKey),
+        extractFingerprintFromArmoredPublicKey(targetArmoredKey),
+        extractFingerprintFromArmoredPublicKey(myArmoredKey),
+      ]);
 
     if (!uploadedFingerprint || !targetFingerprint || !myFingerprint) {
       setTaskError("Invalid armored public key.");
@@ -358,7 +287,9 @@ export function Session({ roomCode }: Props) {
     }
 
     if (uploadedFingerprint === myFingerprint) {
-      window.alert("This key appears to be yours. You've already uploaded your own key; it's time to sign someone else's!");
+      window.alert(
+        "This key appears to be yours. You've already uploaded your own key; it's time to sign someone else's!",
+      );
       return;
     }
 
@@ -427,7 +358,10 @@ export function Session({ roomCode }: Props) {
         </p>
 
         <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-2">
-          <Graph snapshot={snapshot ?? EMPTY_SNAPSHOT} selfClientId={clientId} />
+          <Graph
+            snapshot={snapshot ?? EMPTY_SNAPSHOT}
+            selfClientId={clientId}
+          />
 
           <div className="grid min-h-0 min-w-0 gap-4 lg:grid-rows-[1fr_auto]">
             <Tasks
