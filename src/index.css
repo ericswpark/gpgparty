@@ -48,10 +48,16 @@ button {
     font-weight: 500;
     font-family: inherit;
     background-color: #1a1a1a;
-    cursor: pointer;
+    cursor: default;
     transition: border-color 0.25s;
 }
-button:hover {
+button:not(:disabled) {
+    cursor: pointer;
+}
+button:disabled {
+    cursor: not-allowed;
+}
+button:not(:disabled):hover {
     border-color: #646cff;
 }
 button:focus,

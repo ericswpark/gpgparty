@@ -7,6 +7,7 @@ type Props = {
 
 export function Intro({ value, setValue }: Props) {
   const [draftRoomCode, setDraftRoomCode] = useState(value);
+  const canJoinRoom = draftRoomCode.trim().length > 0;
 
   const joinRoom = (roomCode: string) => {
     const normalized = roomCode.trim().toLowerCase();
@@ -60,13 +61,23 @@ export function Intro({ value, setValue }: Props) {
             className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 outline-none ring-0 transition focus:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300/70 sm:text-base"
             placeholder="Room code"
           />
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200/40 bg-blue-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80 sm:text-base"
+          <span
+            title={
+              !canJoinRoom
+                ? "You need to enter the room code first!"
+                : undefined
+            }
+            className="inline-flex shrink-0"
           >
-            Join room
-          </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canJoinRoom}
+              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200/40 bg-blue-500 px-5 py-3 text-sm font-semibold text-white transition enabled:hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80 disabled:cursor-not-allowed disabled:border-white/20 disabled:bg-blue-500/40 disabled:text-white/60 sm:text-base"
+            >
+              Join room
+            </button>
+          </span>
           <button
             type="button"
             onClick={createRoom}
