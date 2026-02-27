@@ -5,6 +5,8 @@ type Props = {
   message: string;
   disabled?: boolean;
   stretch?: boolean;
+  showTitle?: boolean;
+  variant?: "panel" | "inline";
   onFileLoaded: (armoredText: string, fileName: string) => Promise<void> | void;
 };
 
@@ -25,6 +27,8 @@ export function ArmoredDropzone({
   message,
   disabled = false,
   stretch = false,
+  showTitle = true,
+  variant = "panel",
   onFileLoaded,
 }: Props) {
   const [isDragActive, setIsDragActive] = useState(false);
@@ -56,8 +60,10 @@ export function ArmoredDropzone({
   };
 
   return (
-    <section className={`rounded-xl border border-white/15 bg-white/5 p-4 ${stretch ? "flex h-full min-h-0 flex-col" : ""}`}>
-      <h3 className="m-0 text-base font-semibold text-white">{title}</h3>
+    <section
+      className={`${variant === "inline" ? "rounded-lg border border-white/10 bg-black/20 p-3" : "rounded-xl border border-white/15 bg-white/5 p-4"} ${stretch ? "flex h-full min-h-0 flex-col" : ""}`}
+    >
+      {showTitle ? <h3 className="m-0 text-base font-semibold text-white">{title}</h3> : null}
       <div
         role="button"
         tabIndex={0}
@@ -91,7 +97,7 @@ export function ArmoredDropzone({
             }
           }
         }}
-        className={`mt-3 rounded-lg border border-dashed px-4 py-8 text-center text-sm transition ${
+        className={`${showTitle ? "mt-3" : ""} rounded-lg border border-dashed px-4 py-8 text-center text-sm transition ${
           disabled
             ? "cursor-not-allowed border-white/20 text-white/45"
             : isDragActive

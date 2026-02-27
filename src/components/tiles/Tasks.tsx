@@ -93,7 +93,9 @@ gpg --armor --export "TARGET_USER_ID_OR_FINGERPRINT" > signed-${keyFile}`}</code
                   <div className="mt-3">
                     <ArmoredDropzone
                       title={`Upload signed key for ${participant.displayName}`}
-                      message="Drag signed public key file here"
+                      message={`Drag signed public key file of ${participant.displayName} here`}
+                      showTitle={false}
+                      variant="inline"
                       disabled={connectionState !== "open"}
                       onFileLoaded={async (armoredSignedKey) => {
                         await onUploadSignedKey(participant.clientId, armoredSignedKey);
