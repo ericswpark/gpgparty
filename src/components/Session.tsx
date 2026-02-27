@@ -2,7 +2,7 @@ import { readKey } from "openpgp";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Graph } from "./tiles/Graph";
 import { usePartyRoom } from "../hooks/usePartyRoom";
-import { createTarArchive } from "../lib/tar";
+import { createZipArchive } from "../lib/zip";
 import { normalizeFileName } from "../lib/fileName";
 import type { SessionSnapshot } from "../../shared/protocol";
 import type { ParticipantSnapshot } from "../../shared/protocol";
@@ -20,7 +20,7 @@ function randomGuestName(): string {
 function downloadBytes(fileName: string, bytes: Uint8Array) {
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
-  const blob = new Blob([buffer], { type: "application/x-tar" });
+  const blob = new Blob([buffer], { type: "application/zip" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -391,6 +391,33 @@ export function Session({ roomCode }: Props) {
     uploadSignedKey(targetClientId, armoredSignedKey);
   };
 
+  const handleDownloadMine = () => {
+    void (async () => {
+      const zip = await createZipArchive(
+        mySignedPublicKeys.map((file) => ({
+          name: file.fileName,
+          content: file.content,
+        })),
+      );
+      downloadBytes(
+        `${normalizeFileName(displayName)}-signed-public-keys.zip`,
+        zip,
+      );
+    })();
+  };
+
+  const handleDownloadAll = () => {
+    void (async () => {
+      const zip = await createZipArchive(
+        allRoomKeyFiles.map((file) => ({
+          name: file.fileName,
+          content: file.content,
+        })),
+      );
+      downloadBytes(`${normalizeFileName(roomCode)}-all-public-keys.zip`, zip);
+    })();
+  };
+
   return (
     <main className="min-h-screen w-full overflow-x-auto overflow-y-auto p-4 sm:p-6 lg:h-screen lg:overflow-y-auto">
       <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-350 flex-col sm:min-h-[calc(100vh-3rem)] lg:h-full lg:min-h-0">
@@ -418,30 +445,8 @@ export function Session({ roomCode }: Props) {
             <Downloads
               canDownloadMine={mySignedPublicKeys.length > 0}
               canDownloadAll={allRoomKeyFiles.length > 0}
-              onDownloadMine={() => {
-                const tar = createTarArchive(
-                  mySignedPublicKeys.map((file) => ({
-                    name: file.fileName,
-                    content: file.content,
-                  })),
-                );
-                downloadBytes(
-                  `${normalizeFileName(displayName)}-signed-public-keys.tar`,
-                  tar,
-                );
-              }}
-              onDownloadAll={() => {
-                const tar = createTarArchive(
-                  allRoomKeyFiles.map((file) => ({
-                    name: file.fileName,
-                    content: file.content,
-                  })),
-                );
-                downloadBytes(
-                  `${normalizeFileName(roomCode)}-all-public-keys.tar`,
-                  tar,
-                );
-              }}
+              onDownloadMine={handleDownloadMine}
+              onDownloadAll={handleDownloadAll}
             />
           </div>
         </div>

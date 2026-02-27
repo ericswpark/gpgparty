@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.575.0",
     "openpgp": "^6.3.0",
     "partysocket": "1.1.16",
