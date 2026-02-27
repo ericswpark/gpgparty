@@ -135,10 +135,11 @@ export function usePartyRoom(roomCode: string | null, displayName: string) {
   }, [connectionState, displayName, sendMessage]);
 
   const uploadPublicKey = useCallback(
-    (armoredKey: string) => {
+    (armoredKey: string, publicKeyFingerprint: string) => {
       sendMessage({
         type: "upload-pubkey",
         armoredKey,
+        publicKeyFingerprint,
       });
     },
     [sendMessage]

@@ -7,6 +7,7 @@ type ParticipantRecord = {
   displayName: string;
   connections: Set<string>;
   publicKey: string | null;
+  publicKeyFingerprint: string | null;
   joinedAt: number;
   updatedAt: number;
 };
@@ -20,6 +21,8 @@ type SignatureRecord = {
 
 const MAX_DISPLAY_NAME_LENGTH = 48;
 const MAX_ARMORED_KEY_LENGTH = 1024 * 256;
+const DUPLICATE_PUBKEY_MESSAGE =
+  "Oops, this person already exists within this room. Please upload your own pubkey.";
 
 export default class Server implements Party.Server {
   private readonly participants = new Map<string, ParticipantRecord>();
@@ -91,6 +94,7 @@ export default class Server implements Party.Server {
             displayName,
             connections: new Set([sender.id]),
             publicKey: null,
+            publicKeyFingerprint: null,
             joinedAt: Date.now(),
             updatedAt: Date.now(),
           });
@@ -131,7 +135,23 @@ export default class Server implements Party.Server {
           return;
         }
 
+        const uploadedFingerprint = this.sanitizeFingerprint(message.publicKeyFingerprint);
+        if (!uploadedFingerprint) {
+          this.sendError(sender, "Invalid armored public key.");
+          return;
+        }
+
+        const duplicateExists = this.hasDuplicatePublicKeyFingerprint(
+          uploadedFingerprint,
+          participant.clientId
+        );
+        if (duplicateExists) {
+          this.sendError(sender, DUPLICATE_PUBKEY_MESSAGE);
+          return;
+        }
+
         participant.publicKey = armoredKey;
+        participant.publicKeyFingerprint = uploadedFingerprint;
         participant.displayName = this.ensureUniquePublicKeyDisplayName(
           participant.displayName,
           participant.clientId
@@ -295,16 +315,40 @@ export default class Server implements Party.Server {
   }
 
   private sanitizeArmoredBlob(value: string): string | null {
-    const trimmed = value.trim();
-    if (!trimmed) {
+    const normalized = value.replaceAll(/\r\n/g, "\n").trim();
+    if (!normalized) {
       return null;
     }
 
-    if (trimmed.length > MAX_ARMORED_KEY_LENGTH) {
+    if (normalized.length > MAX_ARMORED_KEY_LENGTH) {
       return null;
     }
 
-    return trimmed;
+    return normalized;
+  }
+
+  private sanitizeFingerprint(value: string): string | null {
+    const normalized = value.trim().toLocaleLowerCase();
+    if (!/^[0-9a-f]{40,64}$/.test(normalized)) {
+      return null;
+    }
+    return normalized;
+  }
+
+  private hasDuplicatePublicKeyFingerprint(
+    fingerprint: string,
+    ownClientId: string
+  ): boolean {
+    for (const entry of this.participants.values()) {
+      if (entry.clientId === ownClientId || entry.publicKeyFingerprint === null) {
+        continue;
+      }
+
+      if (entry.publicKeyFingerprint === fingerprint) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private ensureUniquePublicKeyDisplayName(displayName: string, clientId: string): string {

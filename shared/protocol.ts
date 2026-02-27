@@ -11,6 +11,7 @@ export type ClientMessage =
   | {
       type: "upload-pubkey";
       armoredKey: string;
+      publicKeyFingerprint: string;
     }
   | {
       type: "upload-signed-key";
@@ -66,4 +67,3 @@ export function safeJsonParse(value: string): unknown {
     return null;
   }
 }
-

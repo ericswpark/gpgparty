@@ -1,5 +1,5 @@
 import { readKey } from "openpgp";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Graph } from "./tiles/Graph";
 import { usePartyRoom } from "../hooks/usePartyRoom";
 import { createTarArchive } from "../lib/tar";
@@ -44,6 +44,8 @@ const EMPTY_SNAPSHOT: SessionSnapshot = {
   signedKeys: {},
   edges: [],
 };
+const DUPLICATE_PUBKEY_MESSAGE =
+  "Oops, this person already exists within this room. Please upload your own pubkey.";
 
 async function extractNameFromArmoredPublicKey(
   armoredKey: string,
@@ -59,6 +61,17 @@ async function extractNameFromArmoredPublicKey(
     const withoutComment = withoutEmail.replace(/\([^)]*\)/g, " ").trim();
     const parsed = withoutComment.replace(/\s+/g, " ");
     return parsed || null;
+  } catch {
+    return null;
+  }
+}
+
+async function extractFingerprintFromArmoredPublicKey(
+  armoredKey: string,
+): Promise<string | null> {
+  try {
+    const key = await readKey({ armoredKey });
+    return key.getFingerprint().toLowerCase();
   } catch {
     return null;
   }
@@ -84,6 +97,7 @@ export function Session({ roomCode }: Props) {
     string | null
   >(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const lastAlertedErrorRef = useRef<string | null>(null);
 
   const {
     clientId,
@@ -93,6 +107,20 @@ export function Session({ roomCode }: Props) {
     uploadPublicKey,
     uploadSignedKey,
   } = usePartyRoom(roomCode, displayName);
+
+  useEffect(() => {
+    if (!lastError) {
+      return;
+    }
+    if (lastError !== DUPLICATE_PUBKEY_MESSAGE) {
+      return;
+    }
+    if (lastAlertedErrorRef.current === lastError) {
+      return;
+    }
+    lastAlertedErrorRef.current = lastError;
+    window.alert(DUPLICATE_PUBKEY_MESSAGE);
+  }, [lastError]);
 
   const self = useMemo(
     () =>
@@ -241,12 +269,36 @@ export function Session({ roomCode }: Props) {
       return;
     }
 
+    const uploadedFingerprint =
+      await extractFingerprintFromArmoredPublicKey(armoredPublicKey);
+    if (!uploadedFingerprint) {
+      setTaskError("Invalid armored public key.");
+      return;
+    }
+    if (snapshot) {
+      const existingFingerprintEntries = await Promise.all(
+        Object.entries(snapshot.publicKeys)
+          .filter(([participantId]) => participantId !== clientId)
+          .map(async ([participantId, key]) => ({
+            participantId,
+            fingerprint: await extractFingerprintFromArmoredPublicKey(key),
+          })),
+      );
+      const duplicate = existingFingerprintEntries.some(
+        (entry) => entry.fingerprint === uploadedFingerprint,
+      );
+      if (duplicate) {
+        window.alert(DUPLICATE_PUBKEY_MESSAGE);
+        return;
+      }
+    }
+
     const extractedName = await extractNameFromArmoredPublicKey(armoredPublicKey);
     if (extractedName) {
       setDisplayName(extractedName);
     }
 
-    uploadPublicKey(armoredPublicKey);
+    uploadPublicKey(armoredPublicKey, uploadedFingerprint);
   };
 
   const handleUploadSignedKey = async (
