@@ -43,10 +43,12 @@ export async function hasOwnCertificationOnKey(
     const signerKeyIds = new Set(
       signerPublicKey.getKeyIDs().map((keyId) => keyId.toHex().toLowerCase()),
     );
+    console.debug("All key IDs of signer: ", signerKeyIds)
 
     for (const user of signedKey.users) {
       for (const certification of user.otherCertifications) {
         const issuerKeyId = certification.issuerKeyID?.toHex().toLowerCase();
+        console.debug("Signed key certification issuer key ID: ", issuerKeyId);
         if (!issuerKeyId || !signerKeyIds.has(issuerKeyId)) {
           continue;
         }
