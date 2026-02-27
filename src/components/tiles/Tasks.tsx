@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Check, Copy, Download } from "lucide-react";
 import { readKey } from "openpgp";
 import { useEffect, useMemo, useState } from "react";
 import type { ParticipantSnapshot } from "../../../shared/protocol";
@@ -45,7 +45,9 @@ export function Tasks({
   const [skippedClientIds, setSkippedClientIds] = useState<
     Record<string, boolean>
   >({});
-
+  const [copiedClientIds, setCopiedClientIds] = useState<
+    Record<string, boolean>
+  >({});
   useEffect(() => {
     let cancelled = false;
 
@@ -128,6 +130,10 @@ export function Tasks({
                 "TARGET_USER_ID_OR_FINGERPRINT";
               const keyFile = `${normalizeFileName(participant.displayName)}.asc`;
               const isSkipped = !!skippedClientIds[participant.clientId];
+              const isCopied = !!copiedClientIds[participant.clientId];
+              const commands = `gpg --import ./${keyFile}
+gpg --sign-key "${fingerprint}"
+gpg --armor --export "${fingerprint}" > signed-${keyFile}`;
 
               return (
                 <article
@@ -189,11 +195,48 @@ export function Tasks({
 
                   {!isSkipped ? (
                     <>
-                      <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75">
-                        <code>{`gpg --import ./${keyFile}
-gpg --sign-key "${fingerprint}"
-gpg --armor --export "${fingerprint}" > signed-${keyFile}`}</code>
-                      </pre>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(commands);
+                              setCopiedClientIds((previous) => ({
+                                ...previous,
+                                [participant.clientId]: true,
+                              }));
+                              window.setTimeout(() => {
+                                setCopiedClientIds((previous) => ({
+                                  ...previous,
+                                  [participant.clientId]: false,
+                                }));
+                              }, 1500);
+                            } catch {
+                              // Ignore clipboard API failures (e.g. insecure context).
+                            }
+                          }}
+                          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/45 bg-white/12! p-0 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-white/30"
+                          aria-label={`Copy GPG commands for ${participant.displayName}`}
+                          title={`Copy GPG commands for ${participant.displayName}`}
+                        >
+                          {isCopied ? (
+                            <Check
+                              size={14}
+                              className="h-4 w-4 shrink-0"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Copy
+                              size={14}
+                              className="h-4 w-4 shrink-0"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </button>
+                        <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 pr-20 text-xs text-white/75">
+                          <code>{commands}</code>
+                        </pre>
+                      </div>
 
                       <div className="mt-3">
                         <ArmoredDropzone
