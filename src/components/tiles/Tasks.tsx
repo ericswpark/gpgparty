@@ -56,7 +56,10 @@ export function Tasks({
 
           try {
             const key = await readKey({ armoredKey });
-            return [participant.clientId, key.getFingerprint().toUpperCase()] as const;
+            return [
+              participant.clientId,
+              key.getFingerprint().toUpperCase(),
+            ] as const;
           } catch {
             return null;
           }
@@ -86,8 +89,12 @@ export function Tasks({
 
   return (
     <section className="flex min-h-0 min-w-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4">
-      {lastError ? <p className="m-0 mt-2 text-sm text-red-200">{lastError}</p> : null}
-      {taskError ? <p className="m-0 mt-2 text-sm text-red-200">{taskError}</p> : null}
+      {lastError ? (
+        <p className="m-0 mt-2 text-sm text-red-200">{lastError}</p>
+      ) : null}
+      {taskError ? (
+        <p className="m-0 mt-2 text-sm text-red-200">{taskError}</p>
+      ) : null}
 
       {!hasUploadedPublicKey ? (
         <div className="mt-3 flex-1">
@@ -105,7 +112,9 @@ export function Tasks({
         <div className="mt-3 flex min-h-0 flex-1 flex-col">
           <p className="m-0 text-sm text-white/80">
             Remaining people for you to sign:{" "}
-            <span className="font-semibold text-cyan-200">{actionableTargets.length}</span>
+            <span className="font-semibold text-cyan-200">
+              {actionableTargets.length}
+            </span>
           </p>
 
           <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
@@ -123,7 +132,11 @@ export function Tasks({
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <p className="m-0 text-sm text-white/80">
-                      Sign <span className="font-semibold">{participant.displayName}</span> locally
+                      Sign{" "}
+                      <span className="font-semibold">
+                        {participant.displayName}
+                      </span>{" "}
+                      locally
                     </p>
                     <button
                       type="button"
@@ -150,7 +163,10 @@ gpg --armor --export "${fingerprint}" > signed-${keyFile}`}</code>
                       variant="inline"
                       disabled={connectionState !== "open"}
                       onFileLoaded={async (armoredSignedKey) => {
-                        await onUploadSignedKey(participant.clientId, armoredSignedKey);
+                        await onUploadSignedKey(
+                          participant.clientId,
+                          armoredSignedKey,
+                        );
                       }}
                     />
                   </div>

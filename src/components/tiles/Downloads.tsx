@@ -17,7 +17,11 @@ export function Downloads({
     <section className="min-w-0 rounded-2xl border border-white/15 bg-white/5 p-4">
       <div className="grid gap-3">
         <span
-          title={!canDownloadMine ? "Nobody has signed your public key yet." : undefined}
+          title={
+            !canDownloadMine
+              ? "Nobody has signed your public key yet."
+              : undefined
+          }
           className="inline-flex w-full"
         >
           <button
@@ -31,7 +35,11 @@ export function Downloads({
           </button>
         </span>
         <span
-          title={!canDownloadAll ? "No public keys are available in this room yet." : undefined}
+          title={
+            !canDownloadAll
+              ? "No public keys are available in this room yet."
+              : undefined
+          }
           className="inline-flex w-full"
         >
           <button

@@ -5,7 +5,9 @@ type ZipFileInput = {
   content: string;
 };
 
-export async function createZipArchive(files: ZipFileInput[]): Promise<Uint8Array> {
+export async function createZipArchive(
+  files: ZipFileInput[],
+): Promise<Uint8Array> {
   const zip = new JSZip();
 
   for (const file of files) {

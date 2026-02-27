@@ -25,7 +25,9 @@ export function Graph({ snapshot, selfClientId }: Props) {
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
     undefined,
   );
-  const resizeFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resizeFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const nodesLengthRef = useRef(0);
   const prevNodesLengthRef = useRef(0);
   const fitOnEngineStopRef = useRef(false);
@@ -127,7 +129,9 @@ export function Graph({ snapshot, selfClientId }: Props) {
         className="mt-4 h-90 overflow-hidden rounded-xl border border-white/10 bg-black/25 lg:h-auto lg:min-h-0 lg:flex-1"
       >
         {snapshot.participants.length === 0 ? (
-          <p className="m-0 p-4 text-sm text-white/60">Waiting for participants...</p>
+          <p className="m-0 p-4 text-sm text-white/60">
+            Waiting for participants...
+          </p>
         ) : size.width > 0 && size.height > 0 ? (
           <ForceGraph2D
             ref={graphRef}
@@ -169,7 +173,8 @@ export function Graph({ snapshot, selfClientId }: Props) {
       </div>
 
       <p className="m-0 mt-1 text-right text-sm text-white/70">
-        {snapshot.participants.length} participants, {snapshot.edges.length} signatures
+        {snapshot.participants.length} participants, {snapshot.edges.length}{" "}
+        signatures
       </p>
     </section>
   );

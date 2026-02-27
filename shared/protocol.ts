@@ -56,7 +56,10 @@ export type ServerMessage =
       message: string;
     };
 
-export function signatureKey(signerClientId: string, targetClientId: string): string {
+export function signatureKey(
+  signerClientId: string,
+  targetClientId: string,
+): string {
   return `${signerClientId}::${targetClientId}`;
 }
 

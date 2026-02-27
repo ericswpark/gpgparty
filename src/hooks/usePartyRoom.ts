@@ -1,6 +1,10 @@
 import PartySocket from "partysocket";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ClientMessage, ServerMessage, SessionSnapshot } from "../../shared/protocol";
+import type {
+  ClientMessage,
+  ServerMessage,
+  SessionSnapshot,
+} from "../../shared/protocol";
 import { safeJsonParse } from "../../shared/protocol";
 import { getPartyKitHost, getPartyKitName } from "../lib/partykit";
 
@@ -37,8 +41,12 @@ export function usePartyRoom(roomCode: string | null, displayName: string) {
   const normalizedRoomCode = roomCode?.trim() || null;
 
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
-  const [connectionState, setConnectionState] = useState<ConnectionState>("closed");
-  const [lastErrorByRoom, setLastErrorByRoom] = useState<{ roomCode: string; message: string } | null>(null);
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>("closed");
+  const [lastErrorByRoom, setLastErrorByRoom] = useState<{
+    roomCode: string;
+    message: string;
+  } | null>(null);
   const [clientId] = useState(getOrCreateClientId);
 
   const displayNameRef = useRef(displayName);
@@ -142,7 +150,7 @@ export function usePartyRoom(roomCode: string | null, displayName: string) {
         publicKeyFingerprint,
       });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const uploadSignedKey = useCallback(
@@ -153,18 +161,23 @@ export function usePartyRoom(roomCode: string | null, displayName: string) {
         armoredSignedKey,
       });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   return {
     clientId,
-    snapshot: snapshot && normalizedRoomCode === snapshot.roomId ? snapshot : null,
+    snapshot:
+      snapshot && normalizedRoomCode === snapshot.roomId ? snapshot : null,
     connectionState: !normalizedRoomCode
       ? "closed"
-      : connectionState === "open" || lastErrorByRoom?.roomCode === normalizedRoomCode
+      : connectionState === "open" ||
+          lastErrorByRoom?.roomCode === normalizedRoomCode
         ? connectionState
         : "connecting",
-    lastError: lastErrorByRoom?.roomCode === normalizedRoomCode ? lastErrorByRoom.message : null,
+    lastError:
+      lastErrorByRoom?.roomCode === normalizedRoomCode
+        ? lastErrorByRoom.message
+        : null,
     uploadPublicKey,
     uploadSignedKey,
     requestSnapshot: () => sendMessage({ type: "request-snapshot" }),

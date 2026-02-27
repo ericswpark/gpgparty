@@ -1,5 +1,10 @@
 import type * as Party from "partykit/server";
-import type { ClientMessage, ParticipantSnapshot, SessionSnapshot, ServerMessage } from "../shared/protocol";
+import type {
+  ClientMessage,
+  ParticipantSnapshot,
+  SessionSnapshot,
+  ServerMessage,
+} from "../shared/protocol";
 import { safeJsonParse, signatureKey } from "../shared/protocol";
 
 type ParticipantRecord = {
@@ -39,7 +44,10 @@ export default class Server implements Party.Server {
     conn.send(JSON.stringify(msg));
   }
 
-  onMessage(message: string | ArrayBuffer | ArrayBufferView, sender: Party.Connection) {
+  onMessage(
+    message: string | ArrayBuffer | ArrayBufferView,
+    sender: Party.Connection,
+  ) {
     if (typeof message !== "string") {
       this.sendError(sender, "Only UTF-8 JSON messages are supported.");
       return;
@@ -71,7 +79,10 @@ export default class Server implements Party.Server {
     this.broadcastSnapshot();
   }
 
-  private handleClientMessage(message: ClientMessage, sender: Party.Connection) {
+  private handleClientMessage(
+    message: ClientMessage,
+    sender: Party.Connection,
+  ) {
     switch (message.type) {
       case "join": {
         const clientId = this.sanitizeClientId(message.clientId);
@@ -115,7 +126,7 @@ export default class Server implements Party.Server {
           participant.publicKey !== null
             ? this.ensureUniquePublicKeyDisplayName(
                 sanitizedName,
-                participant.clientId
+                participant.clientId,
               )
             : sanitizedName;
         participant.updatedAt = Date.now();
@@ -135,7 +146,9 @@ export default class Server implements Party.Server {
           return;
         }
 
-        const uploadedFingerprint = this.sanitizeFingerprint(message.publicKeyFingerprint);
+        const uploadedFingerprint = this.sanitizeFingerprint(
+          message.publicKeyFingerprint,
+        );
         if (!uploadedFingerprint) {
           this.sendError(sender, "Invalid armored public key.");
           return;
@@ -143,7 +156,7 @@ export default class Server implements Party.Server {
 
         const duplicateExists = this.hasDuplicatePublicKeyFingerprint(
           uploadedFingerprint,
-          participant.clientId
+          participant.clientId,
         );
         if (duplicateExists) {
           this.sendError(sender, DUPLICATE_PUBKEY_MESSAGE);
@@ -154,7 +167,7 @@ export default class Server implements Party.Server {
         participant.publicKeyFingerprint = uploadedFingerprint;
         participant.displayName = this.ensureUniquePublicKeyDisplayName(
           participant.displayName,
-          participant.clientId
+          participant.clientId,
         );
         participant.updatedAt = Date.now();
         this.broadcastSnapshot();
@@ -168,17 +181,25 @@ export default class Server implements Party.Server {
         }
 
         if (participant.clientId === message.targetClientId) {
-          this.sendError(sender, "Cannot submit a self-signature in this flow.");
+          this.sendError(
+            sender,
+            "Cannot submit a self-signature in this flow.",
+          );
           return;
         }
 
         const target = this.participants.get(message.targetClientId);
         if (!target || !target.publicKey) {
-          this.sendError(sender, "Target participant does not have a public key yet.");
+          this.sendError(
+            sender,
+            "Target participant does not have a public key yet.",
+          );
           return;
         }
 
-        const armoredSignedKey = this.sanitizeArmoredBlob(message.armoredSignedKey);
+        const armoredSignedKey = this.sanitizeArmoredBlob(
+          message.armoredSignedKey,
+        );
         if (!armoredSignedKey) {
           this.sendError(sender, "Invalid armored signed public key.");
           return;
@@ -201,7 +222,9 @@ export default class Server implements Party.Server {
     }
   }
 
-  private getParticipantFromConnection(connectionId: string): ParticipantRecord | null {
+  private getParticipantFromConnection(
+    connectionId: string,
+  ): ParticipantRecord | null {
     const clientId = this.connectionToClientId.get(connectionId);
     if (!clientId) {
       return null;
@@ -235,33 +258,46 @@ export default class Server implements Party.Server {
 
   private buildSnapshot(): SessionSnapshot {
     const participants = [...this.participants.values()].sort((a, b) =>
-      a.joinedAt === b.joinedAt ? a.displayName.localeCompare(b.displayName) : a.joinedAt - b.joinedAt
+      a.joinedAt === b.joinedAt
+        ? a.displayName.localeCompare(b.displayName)
+        : a.joinedAt - b.joinedAt,
     );
 
     const publicKeyOwners = new Set(
-      participants.filter((participant) => participant.publicKey !== null).map((participant) => participant.clientId)
+      participants
+        .filter((participant) => participant.publicKey !== null)
+        .map((participant) => participant.clientId),
     );
 
-    const participantSnapshots: ParticipantSnapshot[] = participants.map((participant) => {
-      const totalSignableTargets = [...publicKeyOwners].filter((targetId) => targetId !== participant.clientId).length;
-      const submittedSignatures = [...this.signatures.values()].filter(
-        (record) => record.signerClientId === participant.clientId && publicKeyOwners.has(record.targetClientId)
-      ).length;
-      const remainingToSign = Math.max(totalSignableTargets - submittedSignatures, 0);
+    const participantSnapshots: ParticipantSnapshot[] = participants.map(
+      (participant) => {
+        const totalSignableTargets = [...publicKeyOwners].filter(
+          (targetId) => targetId !== participant.clientId,
+        ).length;
+        const submittedSignatures = [...this.signatures.values()].filter(
+          (record) =>
+            record.signerClientId === participant.clientId &&
+            publicKeyOwners.has(record.targetClientId),
+        ).length;
+        const remainingToSign = Math.max(
+          totalSignableTargets - submittedSignatures,
+          0,
+        );
 
-      const receivedSignatures = [...this.signatures.values()].filter(
-        (record) => record.targetClientId === participant.clientId
-      ).length;
+        const receivedSignatures = [...this.signatures.values()].filter(
+          (record) => record.targetClientId === participant.clientId,
+        ).length;
 
-      return {
-        clientId: participant.clientId,
-        displayName: participant.displayName,
-        connected: participant.connections.size > 0,
-        hasPublicKey: participant.publicKey !== null,
-        remainingToSign,
-        receivedSignatures,
-      };
-    });
+        return {
+          clientId: participant.clientId,
+          displayName: participant.displayName,
+          connected: participant.connections.size > 0,
+          hasPublicKey: participant.publicKey !== null,
+          remainingToSign,
+          receivedSignatures,
+        };
+      },
+    );
 
     const publicKeys: Record<string, string> = {};
     for (const participant of participants) {
@@ -337,10 +373,13 @@ export default class Server implements Party.Server {
 
   private hasDuplicatePublicKeyFingerprint(
     fingerprint: string,
-    ownClientId: string
+    ownClientId: string,
   ): boolean {
     for (const entry of this.participants.values()) {
-      if (entry.clientId === ownClientId || entry.publicKeyFingerprint === null) {
+      if (
+        entry.clientId === ownClientId ||
+        entry.publicKeyFingerprint === null
+      ) {
         continue;
       }
 
@@ -351,12 +390,18 @@ export default class Server implements Party.Server {
     return false;
   }
 
-  private ensureUniquePublicKeyDisplayName(displayName: string, clientId: string): string {
+  private ensureUniquePublicKeyDisplayName(
+    displayName: string,
+    clientId: string,
+  ): string {
     const baseName = this.getBaseDisplayName(displayName);
     const normalizedTaken = new Set(
       [...this.participants.values()]
-        .filter((participant) => participant.clientId !== clientId && participant.publicKey !== null)
-        .map((participant) => participant.displayName.toLocaleLowerCase())
+        .filter(
+          (participant) =>
+            participant.clientId !== clientId && participant.publicKey !== null,
+        )
+        .map((participant) => participant.displayName.toLocaleLowerCase()),
     );
 
     if (!normalizedTaken.has(baseName.toLocaleLowerCase())) {
