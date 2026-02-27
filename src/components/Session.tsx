@@ -36,6 +36,16 @@ function downloadBytes(fileName: string, bytes: Uint8Array) {
   URL.revokeObjectURL(url);
 }
 
+function downloadTextFile(fileName: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 const EMPTY_SNAPSHOT: SessionSnapshot = {
   roomId: "",
   updatedAt: 0,
@@ -244,16 +254,7 @@ export function Session({ roomCode }: Props) {
       return;
     }
 
-    const tar = createTarArchive([
-      {
-        name: `${normalizeFileName(participant.displayName)}.asc`,
-        content: key,
-      },
-    ]);
-    downloadBytes(
-      `${normalizeFileName(participant.displayName)}-public-key.tar`,
-      tar,
-    );
+    downloadTextFile(`${normalizeFileName(participant.displayName)}.asc`, key);
   };
 
   const handleUploadPublicKey = async (armoredPublicKey: string) => {
