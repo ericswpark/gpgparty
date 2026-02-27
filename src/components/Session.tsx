@@ -87,6 +87,57 @@ async function extractFingerprintFromArmoredPublicKey(
   }
 }
 
+async function hasOwnCertificationOnKey(
+  armoredSignedKey: string,
+  armoredSignerPublicKey: string,
+): Promise<boolean> {
+  try {
+    const signedKey = await readKey({ armoredKey: armoredSignedKey });
+    const signerKey = await readKey({ armoredKey: armoredSignerPublicKey });
+    const signerPublicKey = signerKey.isPrivate() ? signerKey.toPublic() : signerKey;
+    const signerKeyIds = new Set(
+      signerPublicKey
+        .getKeyIDs()
+        .map((keyId) => keyId.toHex().toLowerCase()),
+    );
+
+    for (const user of signedKey.users) {
+      for (const certification of user.otherCertifications) {
+        const issuerKeyId = certification.issuerKeyID?.toHex().toLowerCase();
+        if (!issuerKeyId || !signerKeyIds.has(issuerKeyId)) {
+          continue;
+        }
+
+        try {
+          const verified = await user.verifyCertificate(certification, [
+            signerPublicKey,
+          ]);
+          if (verified === true) {
+            return true;
+          }
+        } catch {
+          // Ignore malformed or unverifiable certs and continue checking.
+        }
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+async function hasAnyThirdPartyCertification(
+  armoredSignedKey: string,
+): Promise<boolean> {
+  try {
+    const key = await readKey({ armoredKey: armoredSignedKey });
+    return key.users.some((user) => user.otherCertifications.length > 0);
+  } catch {
+    return false;
+  }
+}
+
 function containsPrivateKeyBlock(value: string): boolean {
   return /-----BEGIN PGP (PRIVATE|SECRET) KEY BLOCK-----/i.test(value);
 }
@@ -287,6 +338,53 @@ export function Session({ roomCode }: Props) {
     if (containsPrivateKeyBlock(armoredSignedKey)) {
       window.alert(
         "Oops, you attempted to upload your private key. Use your public key instead.",
+      );
+      return;
+    }
+
+    const targetParticipant = snapshot?.participants.find(
+      (participant) => participant.clientId === targetClientId,
+    );
+    const targetDisplayName = targetParticipant?.displayName ?? "this user";
+    const targetArmoredKey = snapshot?.publicKeys[targetClientId];
+    const myArmoredKey = snapshot?.publicKeys[clientId];
+    if (!targetArmoredKey || !myArmoredKey) {
+      setTaskError("Missing participant public key data in this room.");
+      return;
+    }
+
+    const [uploadedFingerprint, targetFingerprint] = await Promise.all([
+      extractFingerprintFromArmoredPublicKey(armoredSignedKey),
+      extractFingerprintFromArmoredPublicKey(targetArmoredKey),
+    ]);
+
+    if (!uploadedFingerprint || !targetFingerprint) {
+      setTaskError("Invalid armored public key.");
+      return;
+    }
+
+    if (uploadedFingerprint !== targetFingerprint) {
+      window.alert(
+        `Oops, this key is not from ${targetDisplayName}. Please check which key you are uploading.`,
+      );
+      return;
+    }
+
+    const signedCheck = await hasAnyThirdPartyCertification(armoredSignedKey);
+    if (!signedCheck) {
+      window.alert(
+        "Oops, this key was not signed. Please correctly sign and upload the key.",
+      );
+      return;
+    }
+
+    const signedByCurrentUser = await hasOwnCertificationOnKey(
+      armoredSignedKey,
+      myArmoredKey,
+    );
+    if (!signedByCurrentUser) {
+      window.alert(
+        "Oops, this key is signed, but not by you. Please sign the key yourself and upload it.",
       );
       return;
     }
