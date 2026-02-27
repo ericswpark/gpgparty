@@ -1,3 +1,5 @@
+import { readKey } from "openpgp";
+import { useEffect, useMemo, useState } from "react";
 import type { ParticipantSnapshot } from "../../../shared/protocol";
 import type { ConnectionState } from "../../hooks/usePartyRoom";
 import { ArmoredDropzone } from "../ArmoredDropzone";
@@ -28,9 +30,57 @@ export function Tasks({
   onUploadSignedKey,
   onDownloadParticipantKey,
 }: Props) {
-  const actionableTargets = pendingSigningTargets.filter(
-    (participant) => !!publicKeys[participant.clientId],
+  const actionableTargets = useMemo(
+    () =>
+      pendingSigningTargets.filter(
+        (participant) => !!publicKeys[participant.clientId],
+      ),
+    [pendingSigningTargets, publicKeys],
   );
+  const [fingerprintsByClientId, setFingerprintsByClientId] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const parsed = await Promise.all(
+        actionableTargets.map(async (participant) => {
+          const armoredKey = publicKeys[participant.clientId];
+          if (!armoredKey) {
+            return null;
+          }
+
+          try {
+            const key = await readKey({ armoredKey });
+            return [participant.clientId, key.getFingerprint().toUpperCase()] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const next: Record<string, string> = {};
+      for (const entry of parsed) {
+        if (!entry) {
+          continue;
+        }
+        next[entry[0]] = entry[1];
+      }
+      setFingerprintsByClientId(next);
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [actionableTargets, publicKeys]);
 
   return (
     <section className="flex min-h-0 min-w-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4">
@@ -59,6 +109,9 @@ export function Tasks({
           <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             {actionableTargets.map((participant) => {
               const key = publicKeys[participant.clientId];
+              const fingerprint =
+                fingerprintsByClientId[participant.clientId] ??
+                "TARGET_USER_ID_OR_FINGERPRINT";
               const safeName = participant.displayName
                 .trim()
                 .replaceAll(/\s+/g, "-")
@@ -86,8 +139,8 @@ export function Tasks({
 
                   <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75">
                     <code>{`gpg --import ./${keyFile}
-gpg --sign-key "TARGET_USER_ID_OR_FINGERPRINT"
-gpg --armor --export "TARGET_USER_ID_OR_FINGERPRINT" > signed-${keyFile}`}</code>
+gpg --sign-key "${fingerprint}"
+gpg --armor --export "${fingerprint}" > signed-${keyFile}`}</code>
                   </pre>
 
                   <div className="mt-3">
