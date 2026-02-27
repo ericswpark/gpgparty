@@ -1,5 +1,6 @@
 import ForceGraph2D from "react-force-graph-2d";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ForceGraphMethods } from "react-force-graph-2d";
 import type { SessionSnapshot } from "../../../shared/protocol";
 
 type Props = {
@@ -21,6 +22,13 @@ type GraphLink = {
 
 export function Graph({ snapshot, selfClientId }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
+    undefined,
+  );
+  const resizeFitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nodesLengthRef = useRef(0);
+  const prevNodesLengthRef = useRef(0);
+  const fitOnEngineStopRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -59,6 +67,59 @@ export function Graph({ snapshot, selfClientId }: Props) {
     return { nodes, links };
   }, [selfClientId, snapshot.edges, snapshot.participants]);
 
+  useEffect(() => {
+    nodesLengthRef.current = graphData.nodes.length;
+  }, [graphData.nodes.length]);
+
+  useEffect(() => {
+    const previousCount = prevNodesLengthRef.current;
+    const currentCount = graphData.nodes.length;
+
+    // Refit only when another participant node is added after initial population
+    if (previousCount > 0 && currentCount > previousCount) {
+      fitOnEngineStopRef.current = true;
+    }
+
+    prevNodesLengthRef.current = currentCount;
+  }, [graphData.nodes.length]);
+
+  const handleEngineStop = useCallback(() => {
+    if (!fitOnEngineStopRef.current) {
+      return;
+    }
+    fitOnEngineStopRef.current = false;
+
+    requestAnimationFrame(() => {
+      graphRef.current?.zoomToFit(250, 72);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!graphRef.current || size.width === 0 || size.height === 0) {
+      return;
+    }
+    if (nodesLengthRef.current === 0) {
+      return;
+    }
+
+    if (resizeFitTimeoutRef.current) {
+      clearTimeout(resizeFitTimeoutRef.current);
+    }
+
+    resizeFitTimeoutRef.current = setTimeout(() => {
+      requestAnimationFrame(() => {
+        graphRef.current?.zoomToFit(250, 72);
+      });
+    }, 180);
+
+    return () => {
+      if (resizeFitTimeoutRef.current) {
+        clearTimeout(resizeFitTimeoutRef.current);
+        resizeFitTimeoutRef.current = null;
+      }
+    };
+  }, [size.height, size.width]);
+
   return (
     <section className="flex min-h-105 min-w-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4 lg:h-full lg:min-h-0">
       <div
@@ -69,9 +130,11 @@ export function Graph({ snapshot, selfClientId }: Props) {
           <p className="m-0 p-4 text-sm text-white/60">Waiting for participants...</p>
         ) : size.width > 0 && size.height > 0 ? (
           <ForceGraph2D
+            ref={graphRef}
             width={size.width}
             height={size.height}
             graphData={graphData}
+            onEngineStop={handleEngineStop}
             nodeRelSize={6}
             cooldownTicks={120}
             d3VelocityDecay={0.25}
