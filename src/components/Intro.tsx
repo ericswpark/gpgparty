@@ -1,4 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
+import { LogIn, Plus } from "lucide-react";
 
 type Props = {
   value: string;
@@ -75,6 +76,7 @@ export function Intro({ value, setValue }: Props) {
               disabled={!canJoinRoom}
               className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200/40 bg-blue-500 px-5 py-3 text-sm font-semibold text-white transition enabled:hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80 disabled:cursor-not-allowed disabled:border-white/20 disabled:bg-blue-500/40 disabled:text-white/60 sm:text-base"
             >
+              <LogIn size={16} aria-hidden="true" className="mr-2" />
               Join room
             </button>
           </span>
@@ -83,6 +85,7 @@ export function Intro({ value, setValue }: Props) {
             onClick={createRoom}
             className="inline-flex shrink-0 items-center justify-center rounded-lg border border-cyan-200/50 bg-cyan-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/80 sm:text-base"
           >
+            <Plus size={16} aria-hidden="true" className="mr-2" />
             Create room
           </button>
         </div>
