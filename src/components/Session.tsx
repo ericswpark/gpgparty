@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Graph } from "./tiles/Graph";
 import { usePartyRoom } from "../hooks/usePartyRoom";
 import { createTarArchive } from "../lib/tar";
+import { normalizeFileName } from "../lib/fileName";
 import type { SessionSnapshot } from "../../shared/protocol";
 import type { ParticipantSnapshot } from "../../shared/protocol";
 import { Downloads } from "./tiles/Downloads";
@@ -14,14 +15,6 @@ type Props = {
 
 function randomGuestName(): string {
   return `guest-${crypto.randomUUID().slice(0, 6)}`;
-}
-
-function normalizeFileName(value: string): string {
-  const cleaned = value
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9-]+/g, "-");
-  return cleaned.replaceAll(/^-+|-+$/g, "") || "unknown";
 }
 
 function downloadBytes(fileName: string, bytes: Uint8Array) {

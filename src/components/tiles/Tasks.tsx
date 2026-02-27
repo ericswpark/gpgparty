@@ -3,6 +3,7 @@ import { readKey } from "openpgp";
 import { useEffect, useMemo, useState } from "react";
 import type { ParticipantSnapshot } from "../../../shared/protocol";
 import type { ConnectionState } from "../../hooks/usePartyRoom";
+import { normalizeFileName } from "../../lib/fileName";
 import { ArmoredDropzone } from "../ArmoredDropzone";
 
 type Props = {
@@ -113,11 +114,7 @@ export function Tasks({
               const fingerprint =
                 fingerprintsByClientId[participant.clientId] ??
                 "TARGET_USER_ID_OR_FINGERPRINT";
-              const safeName = participant.displayName
-                .trim()
-                .replaceAll(/\s+/g, "-")
-                .toLowerCase();
-              const keyFile = `${safeName || participant.clientId}.asc`;
+              const keyFile = `${normalizeFileName(participant.displayName)}.asc`;
 
               return (
                 <article
