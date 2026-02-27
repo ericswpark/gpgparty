@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Graph } from "./components/Graph";
 import { Intro } from "./components/Intro";
+import { Session } from "./components/Session";
 
 function App() {
-  const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [roomCode, setRoomCode] = useState<string>("");
 
-  if (fingerprint !== null) {
-    return <Graph startFingerprint={fingerprint} />;
+  if (roomCode) {
+    return <Session roomCode={roomCode} />;
   }
 
-  return <Intro value={fingerprint} setValue={setFingerprint} />;
+  return <Intro value={roomCode} setValue={setRoomCode} />;
 }
 
 export default App;

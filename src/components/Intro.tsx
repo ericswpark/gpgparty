@@ -1,20 +1,30 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 
 type Props = {
-  value: string | null;
-  setValue: Dispatch<SetStateAction<string | null>>;
+  value: string;
+  setValue: Dispatch<SetStateAction<string>>;
 };
 
 export function Intro({ value, setValue }: Props) {
-  const [draftFingerprint, setDraftFingerprint] = useState(value ?? "");
+  const [draftRoomCode, setDraftRoomCode] = useState(value);
 
-  const handleSubmit = () => {
-    const normalized = draftFingerprint.trim();
+  const joinRoom = (roomCode: string) => {
+    const normalized = roomCode.trim().toLowerCase();
     if (!normalized) {
       return;
     }
 
     setValue(normalized);
+  };
+
+  const createRoom = () => {
+    const generated = `room-${crypto.randomUUID().slice(0, 8)}`;
+    setDraftRoomCode(generated);
+    setValue(generated);
+  };
+
+  const handleSubmit = () => {
+    joinRoom(draftRoomCode);
   };
 
   return (
@@ -29,9 +39,7 @@ export function Intro({ value, setValue }: Props) {
         >
           gpgparty
         </h1>
-        <p className="mt-3 mb-4 text-sm text-white/80 sm:text-base">
-          Enter room code
-        </p>
+        <p className="mt-3 mb-4 text-sm text-white/80 sm:text-base">Join an existing room or create a new one.</p>
         <label className="sr-only" htmlFor="partykit-room-input">
           Room code
         </label>
@@ -43,22 +51,29 @@ export function Intro({ value, setValue }: Props) {
             inputMode="text"
             autoComplete="off"
             spellCheck={false}
-            value={draftFingerprint}
-            onChange={(event) => setDraftFingerprint(event.target.value)}
+            value={draftRoomCode}
+            onChange={(event) => setDraftRoomCode(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 handleSubmit();
               }
             }}
             className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 outline-none ring-0 transition focus:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300/70 sm:text-base"
-            placeholder="e.g. 0123 4567 89AB CDEF 0123 4567 89AB CDEF 0123 4567"
+            placeholder="e.g. sf-meetup-2026"
           />
           <button
             type="button"
             onClick={handleSubmit}
             className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200/40 bg-blue-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80 sm:text-base"
           >
-            Go!
+            Join room
+          </button>
+          <button
+            type="button"
+            onClick={createRoom}
+            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-cyan-200/50 bg-cyan-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/80 sm:text-base"
+          >
+            Create room
           </button>
         </div>
       </section>
