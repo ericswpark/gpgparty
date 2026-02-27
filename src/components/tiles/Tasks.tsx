@@ -42,6 +42,9 @@ export function Tasks({
   const [fingerprintsByClientId, setFingerprintsByClientId] = useState<
     Record<string, string>
   >({});
+  const [skippedClientIds, setSkippedClientIds] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     let cancelled = false;
@@ -124,52 +127,91 @@ export function Tasks({
                 fingerprintsByClientId[participant.clientId] ??
                 "TARGET_USER_ID_OR_FINGERPRINT";
               const keyFile = `${normalizeFileName(participant.displayName)}.asc`;
+              const isSkipped = !!skippedClientIds[participant.clientId];
 
               return (
                 <article
                   key={participant.clientId}
                   className="rounded-lg border border-white/15 bg-black/20 p-3"
                 >
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="m-0 text-sm text-white/80">
-                      Sign{" "}
-                      <span className="font-semibold">
-                        {participant.displayName}
-                      </span>{" "}
-                      locally
-                    </p>
-                    <button
-                      type="button"
-                      disabled={!key}
-                      onClick={() => onDownloadParticipantKey(participant)}
-                      className="inline-flex items-center gap-1 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  <div
+                    className={`flex items-center justify-between ${isSkipped ? "mb-0" : "mb-2"}`}
+                  >
+                    <p
+                      className={`m-0 text-sm ${isSkipped ? "text-white/50" : "text-white/80"}`}
                     >
-                      <Download size={12} aria-hidden="true" />
-                      Download key
-                    </button>
+                      {isSkipped ? (
+                        <>
+                          Skipped{" "}
+                          <span className="font-semibold">
+                            {participant.displayName}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          Sign{" "}
+                          <span className="font-semibold">
+                            {participant.displayName}
+                          </span>{" "}
+                          locally
+                        </>
+                      )}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1 text-xs text-white/80">
+                        <input
+                          type="checkbox"
+                          checked={isSkipped}
+                          onChange={(event) => {
+                            const { checked } = event.currentTarget;
+                            setSkippedClientIds((previous) => ({
+                              ...previous,
+                              [participant.clientId]: checked,
+                            }));
+                          }}
+                          className="h-3.5 w-3.5 accent-cyan-300"
+                        />
+                        Skip
+                      </label>
+                      {!isSkipped ? (
+                        <button
+                          type="button"
+                          disabled={!key}
+                          onClick={() => onDownloadParticipantKey(participant)}
+                          className="inline-flex items-center gap-1 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Download size={12} aria-hidden="true" />
+                          Download key
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
-                  <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75">
-                    <code>{`gpg --import ./${keyFile}
+                  {!isSkipped ? (
+                    <>
+                      <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75">
+                        <code>{`gpg --import ./${keyFile}
 gpg --sign-key "${fingerprint}"
 gpg --armor --export "${fingerprint}" > signed-${keyFile}`}</code>
-                  </pre>
+                      </pre>
 
-                  <div className="mt-3">
-                    <ArmoredDropzone
-                      title={`Upload signed key for ${participant.displayName}`}
-                      message={`Drag signed public key file of ${participant.displayName} here`}
-                      showTitle={false}
-                      variant="inline"
-                      disabled={connectionState !== "open"}
-                      onFileLoaded={async (armoredSignedKey) => {
-                        await onUploadSignedKey(
-                          participant.clientId,
-                          armoredSignedKey,
-                        );
-                      }}
-                    />
-                  </div>
+                      <div className="mt-3">
+                        <ArmoredDropzone
+                          title={`Upload signed key for ${participant.displayName}`}
+                          message={`Drag signed public key file of ${participant.displayName} here`}
+                          showTitle={false}
+                          variant="inline"
+                          disabled={connectionState !== "open"}
+                          onFileLoaded={async (armoredSignedKey) => {
+                            await onUploadSignedKey(
+                              participant.clientId,
+                              armoredSignedKey,
+                            );
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : null}
                 </article>
               );
             })}
