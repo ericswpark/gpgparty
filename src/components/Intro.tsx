@@ -30,15 +30,15 @@ export function Intro({ value, setValue }: Props) {
           gpgparty
         </h1>
         <p className="mt-3 mb-4 text-sm text-white/80 sm:text-base">
-          Enter a starting public key fingerprint
+          Enter room code
         </p>
-        <label className="sr-only" htmlFor="fingerprint-input">
-          GPG fingerprint
+        <label className="sr-only" htmlFor="partykit-room-input">
+          Room code
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
-            id="fingerprint-input"
-            name="fingerprint"
+            id="partykit-room-input"
+            name="partykit-room-code"
             type="text"
             inputMode="text"
             autoComplete="off"
