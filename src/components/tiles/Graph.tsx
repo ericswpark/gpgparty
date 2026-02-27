@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { SessionSnapshot } from "../../shared/protocol";
+import type { SessionSnapshot } from "../../../shared/protocol";
 
 type Props = {
   snapshot: SessionSnapshot;
