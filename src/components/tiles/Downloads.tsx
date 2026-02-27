@@ -12,7 +12,7 @@ export function Downloads({
   onDownloadAll,
 }: Props) {
   return (
-    <section className="rounded-2xl border border-white/15 bg-white/5 p-4">
+    <section className="min-w-0 rounded-2xl border border-white/15 bg-white/5 p-4">
       <div className="grid gap-3">
         <button
           type="button"
@@ -34,4 +34,3 @@ export function Downloads({
     </section>
   );
 }
-

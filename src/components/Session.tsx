@@ -295,17 +295,17 @@ export function Session({ roomCode }: Props) {
   };
 
   return (
-    <main className="min-h-screen w-full overflow-y-auto p-4 sm:p-6 lg:h-screen lg:overflow-hidden">
+    <main className="min-h-screen w-full overflow-x-auto overflow-y-auto p-4 sm:p-6 lg:h-screen lg:overflow-y-auto">
       <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-350 flex-col sm:min-h-[calc(100vh-3rem)] lg:h-full lg:min-h-0">
         <p className="mb-3 flex shrink-0 justify-end text-sm text-white/70">
           Room: <span className="ml-2 font-mono text-cyan-200">{roomCode}</span>{" "}
           <span className="ml-2">({connectionLabel(connectionState)})</span>
         </p>
 
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+        <div className="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-2">
           <Graph snapshot={snapshot ?? EMPTY_SNAPSHOT} selfClientId={clientId} />
 
-          <div className="grid min-h-0 gap-4 lg:grid-rows-[1fr_auto]">
+          <div className="grid min-h-0 min-w-0 gap-4 lg:grid-rows-[1fr_auto]">
             <Tasks
               connectionState={connectionState}
               lastError={lastError}

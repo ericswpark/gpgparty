@@ -61,7 +61,7 @@ export function ArmoredDropzone({
 
   return (
     <section
-      className={`${variant === "inline" ? "rounded-lg border border-white/10 bg-black/20 p-3" : "rounded-xl border border-white/15 bg-white/5 p-4"} ${stretch ? "flex h-full min-h-0 flex-col" : ""}`}
+      className={`min-w-0 ${variant === "inline" ? "rounded-lg border border-white/10 bg-black/20 p-3" : "rounded-xl border border-white/15 bg-white/5 p-4"} ${stretch ? "flex h-full min-h-0 flex-col" : ""}`}
     >
       {showTitle ? <h3 className="m-0 text-base font-semibold text-white">{title}</h3> : null}
       <div

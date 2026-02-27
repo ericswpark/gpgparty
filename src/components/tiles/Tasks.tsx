@@ -33,7 +33,7 @@ export function Tasks({
   );
 
   return (
-    <section className="flex min-h-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4">
+    <section className="flex min-h-0 min-w-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4">
       {lastError ? <p className="m-0 mt-2 text-sm text-red-200">{lastError}</p> : null}
       {taskError ? <p className="m-0 mt-2 text-sm text-red-200">{taskError}</p> : null}
 

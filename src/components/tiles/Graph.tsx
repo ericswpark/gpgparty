@@ -60,7 +60,7 @@ export function Graph({ snapshot, selfClientId }: Props) {
   }, [selfClientId, snapshot.edges, snapshot.participants]);
 
   return (
-    <section className="flex min-h-105 flex-col rounded-2xl border border-white/15 bg-white/5 p-4 lg:h-full lg:min-h-0">
+    <section className="flex min-h-105 min-w-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4 lg:h-full lg:min-h-0">
       <div
         ref={containerRef}
         className="mt-4 h-90 overflow-hidden rounded-xl border border-white/10 bg-black/25 lg:h-auto lg:min-h-0 lg:flex-1"
@@ -111,4 +111,3 @@ export function Graph({ snapshot, selfClientId }: Props) {
     </section>
   );
 }
-
