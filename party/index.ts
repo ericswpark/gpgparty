@@ -106,7 +106,14 @@ export default class Server implements Party.Server {
           return;
         }
 
-        participant.displayName = this.sanitizeDisplayName(message.displayName);
+        const sanitizedName = this.sanitizeDisplayName(message.displayName);
+        participant.displayName =
+          participant.publicKey !== null
+            ? this.ensureUniquePublicKeyDisplayName(
+                sanitizedName,
+                participant.clientId
+              )
+            : sanitizedName;
         participant.updatedAt = Date.now();
         this.broadcastSnapshot();
         return;
