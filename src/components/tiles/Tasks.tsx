@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { readKey } from "openpgp";
 import { useEffect, useMemo, useState } from "react";
 import type { ParticipantSnapshot } from "../../../shared/protocol";
@@ -131,8 +132,9 @@ export function Tasks({
                       type="button"
                       disabled={!key}
                       onClick={() => onDownloadParticipantKey(participant)}
-                      className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
                     >
+                      <Download size={12} aria-hidden="true" />
                       Download key
                     </button>
                   </div>
