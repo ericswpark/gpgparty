@@ -346,13 +346,19 @@ export function Session({ roomCode }: Props) {
       return;
     }
 
-    const [uploadedFingerprint, targetFingerprint] = await Promise.all([
+    const [uploadedFingerprint, targetFingerprint, myFingerprint] = await Promise.all([
       extractFingerprintFromArmoredPublicKey(armoredSignedKey),
       extractFingerprintFromArmoredPublicKey(targetArmoredKey),
+      extractFingerprintFromArmoredPublicKey(myArmoredKey),
     ]);
 
-    if (!uploadedFingerprint || !targetFingerprint) {
+    if (!uploadedFingerprint || !targetFingerprint || !myFingerprint) {
       setTaskError("Invalid armored public key.");
+      return;
+    }
+
+    if (uploadedFingerprint === myFingerprint) {
+      window.alert("This key appears to be yours. You've already uploaded your own key; it's time to sign someone else's!");
       return;
     }
 
