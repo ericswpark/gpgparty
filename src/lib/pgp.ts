@@ -1,4 +1,10 @@
-import { readKey } from "openpgp";
+import {
+  enums,
+  readKey,
+  type PublicKey,
+  type SignaturePacket,
+  type User,
+} from "openpgp";
 
 export async function extractNameFromArmoredPublicKey(
   armoredKey: string,
@@ -43,25 +49,22 @@ export async function hasOwnCertificationOnKey(
     const signerKeyIds = new Set(
       signerPublicKey.getKeyIDs().map((keyId) => keyId.toHex().toLowerCase()),
     );
-    console.debug("All key IDs of signer: ", signerKeyIds)
 
     for (const user of signedKey.users) {
       for (const certification of user.otherCertifications) {
         const issuerKeyId = certification.issuerKeyID?.toHex().toLowerCase();
-        console.debug("Signed key certification issuer key ID: ", issuerKeyId);
         if (!issuerKeyId || !signerKeyIds.has(issuerKeyId)) {
           continue;
         }
 
-        try {
-          const verified = await user.verifyCertificate(certification, [
+        if (
+          await verifyCertificationFromSigner(
+            user,
+            certification,
             signerPublicKey,
-          ]);
-          if (verified === true) {
-            return true;
-          }
-        } catch {
-          // Ignore malformed or unverifiable certs and continue checking.
+          )
+        ) {
+          return true;
         }
       }
     }
@@ -70,6 +73,55 @@ export async function hasOwnCertificationOnKey(
   } catch {
     return false;
   }
+}
+
+async function verifyCertificationFromSigner(
+  user: User,
+  certification: SignaturePacket,
+  signerPublicKey: PublicKey,
+): Promise<boolean> {
+  try {
+    const verified = await user.verifyCertificate(certification, [
+      signerPublicKey,
+    ]);
+    if (verified === true) {
+      return true;
+    }
+  } catch {
+    // OpenPGP.js may reject cert-only primaries when resolving a signing key
+  }
+
+  const issuerCandidates = signerPublicKey.getKeys(certification.issuerKeyID);
+  for (const issuerCandidate of issuerCandidates) {
+    try {
+      if (certification.revoked) {
+        continue;
+      }
+
+      const isRevoked = await user.isRevoked(
+        certification,
+        issuerCandidate.keyPacket,
+      );
+      if (isRevoked) {
+        continue;
+      }
+
+      await certification.verify(
+        issuerCandidate.keyPacket,
+        enums.signature.certGeneric,
+        {
+          key: user.mainKey.keyPacket,
+          userID: user.userID,
+          userAttribute: user.userAttribute,
+        },
+      );
+      return true;
+    } catch {
+      // Keep checking other matching issuer keys.
+    }
+  }
+
+  return false;
 }
 
 export async function hasAnyThirdPartyCertification(
