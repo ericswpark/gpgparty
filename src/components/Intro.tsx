@@ -27,7 +27,7 @@ export function Intro({ value, setValue }: Props) {
           id="fingerprint-title"
           className="m-0 text-2xl font-semibold leading-tight text-white sm:text-3xl"
         >
-          gpgpartyviz
+          gpgparty
         </h1>
         <p className="mt-3 mb-4 text-sm text-white/80 sm:text-base">
           Enter a starting public key fingerprint
