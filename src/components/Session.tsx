@@ -169,25 +169,45 @@ export function Session({ roomCode }: Props) {
     return files;
   }, [clientId, snapshot]);
 
-  const allPublicKeys = useMemo(() => {
+  const allRoomKeyFiles = useMemo(() => {
     if (!snapshot) {
       return [];
     }
 
-    return Object.entries(snapshot.publicKeys).map(
-      ([participantId, armoredKey]) => {
-        const participant = snapshot.participants.find(
-          (entry) => entry.clientId === participantId,
+    const files: { fileName: string; content: string }[] = [];
+
+    for (const [participantId, armoredKey] of Object.entries(snapshot.publicKeys)) {
+      const participant = snapshot.participants.find(
+        (entry) => entry.clientId === participantId,
+      );
+      const participantLabel = normalizeFileName(
+        participant?.displayName ?? participantId,
+      );
+      files.push({
+        fileName: `${participantLabel}.asc`,
+        content: armoredKey,
+      });
+    }
+
+    for (const [signerId, signedBySigner] of Object.entries(snapshot.signedKeys)) {
+      const signer = snapshot.participants.find(
+        (entry) => entry.clientId === signerId,
+      );
+      const signerLabel = normalizeFileName(signer?.displayName ?? signerId);
+
+      for (const [targetId, signedArmoredKey] of Object.entries(signedBySigner)) {
+        const target = snapshot.participants.find(
+          (entry) => entry.clientId === targetId,
         );
-        const participantLabel = normalizeFileName(
-          participant?.displayName ?? participantId,
-        );
-        return {
-          fileName: `${participantLabel}.asc`,
-          content: armoredKey,
-        };
-      },
-    );
+        const targetLabel = normalizeFileName(target?.displayName ?? targetId);
+        files.push({
+          fileName: `${targetLabel}-signed-by-${signerLabel}.asc`,
+          content: signedArmoredKey,
+        });
+      }
+    }
+
+    return files;
   }, [snapshot]);
 
   const downloadParticipantKey = (participant: ParticipantSnapshot) => {
@@ -277,7 +297,7 @@ export function Session({ roomCode }: Props) {
 
             <Downloads
               canDownloadMine={mySignedPublicKeys.length > 0}
-              canDownloadAll={allPublicKeys.length > 0}
+              canDownloadAll={allRoomKeyFiles.length > 0}
               onDownloadMine={() => {
                 const tar = createTarArchive(
                   mySignedPublicKeys.map((file) => ({
@@ -292,7 +312,7 @@ export function Session({ roomCode }: Props) {
               }}
               onDownloadAll={() => {
                 const tar = createTarArchive(
-                  allPublicKeys.map((file) => ({
+                  allRoomKeyFiles.map((file) => ({
                     name: file.fileName,
                     content: file.content,
                   })),
