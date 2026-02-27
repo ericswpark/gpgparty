@@ -53,12 +53,27 @@ async function extractNameFromArmoredPublicKey(
       return null;
     }
 
-    const match = firstUserId.match(/^([^<]+)/);
-    const parsed = (match?.[1] ?? firstUserId).trim();
+    const withoutEmail = firstUserId.replace(/<[^>]*>/g, " ").trim();
+    const withoutComment = withoutEmail.replace(/\([^)]*\)/g, " ").trim();
+    const parsed = withoutComment.replace(/\s+/g, " ");
     return parsed || null;
   } catch {
     return null;
   }
+}
+
+function containsPrivateKeyBlock(value: string): boolean {
+  return /-----BEGIN PGP (PRIVATE|SECRET) KEY BLOCK-----/i.test(value);
+}
+
+function connectionLabel(state: "connecting" | "open" | "closed"): string {
+  if (state === "open") {
+    return "Connected";
+  }
+  if (state === "connecting") {
+    return "Connecting";
+  }
+  return "Disconnected";
 }
 
 export function Session({ roomCode }: Props) {
@@ -174,33 +189,31 @@ export function Session({ roomCode }: Props) {
   }, [snapshot]);
 
   return (
-    <main className="min-h-screen w-full p-4 sm:p-6">
-      <p className="mb-3 flex justify-end text-sm text-white/70">
-        Room: <span className="ml-2 font-mono text-cyan-200">{roomCode}</span>
-      </p>
+    <main className="min-h-screen w-full overflow-y-auto p-4 sm:p-6 lg:h-screen lg:overflow-hidden">
+      <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1400px] flex-col sm:min-h-[calc(100vh-3rem)] lg:h-full lg:min-h-0">
+        <p className="mb-3 flex shrink-0 justify-end text-sm text-white/70">
+          Room: <span className="ml-2 font-mono text-cyan-200">{roomCode}</span>{" "}
+          <span className="ml-2">({connectionLabel(connectionState)})</span>
+        </p>
 
-      <section className="mx-auto grid w-full max-w-[1400px] gap-4 lg:grid-cols-2">
-        <Graph snapshot={snapshot ?? EMPTY_SNAPSHOT} selfClientId={clientId} />
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+          <Graph snapshot={snapshot ?? EMPTY_SNAPSHOT} selfClientId={clientId} />
 
-        <div className="grid gap-4 lg:grid-rows-2">
-          <section className="rounded-2xl border border-white/15 bg-white/5 p-4">
-            <p className="m-0 mt-1 text-sm text-white/70">
-              {connectionState === "open"
-                ? "Connected"
-                : "Connecting to room..."}
-            </p>
-            {lastError ? (
-              <p className="m-0 mt-2 text-sm text-red-200">{lastError}</p>
-            ) : null}
-            {taskError ? (
-              <p className="m-0 mt-2 text-sm text-red-200">{taskError}</p>
-            ) : null}
+          <div className="grid min-h-0 gap-4 lg:grid-rows-[1fr_auto]">
+            <section className="flex min-h-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-4">
+              {lastError ? (
+                <p className="m-0 mt-2 text-sm text-red-200">{lastError}</p>
+              ) : null}
+              {taskError ? (
+                <p className="m-0 mt-2 text-sm text-red-200">{taskError}</p>
+              ) : null}
 
-            {!self?.hasPublicKey ? (
-              <div className="mt-3">
+              {!self?.hasPublicKey ? (
+                <div className="mt-3 flex-1">
                 <ArmoredDropzone
                   title="Upload your public key"
                   message="Drag public key file here"
+                  stretch
                   disabled={connectionState !== "open"}
                   onFileLoaded={async (armoredPublicKey) => {
                     setTaskError(null);
@@ -208,145 +221,193 @@ export function Session({ roomCode }: Props) {
                       setTaskError("Dropped file was empty.");
                       return;
                     }
-
-                    const extractedName =
-                      await extractNameFromArmoredPublicKey(armoredPublicKey);
-                    if (extractedName) {
-                      setDisplayName(extractedName);
+                    if (containsPrivateKeyBlock(armoredPublicKey)) {
+                      window.alert(
+                        "Oops, you attempted to upload your private key. Use your public key instead.",
+                      );
+                      return;
                     }
 
-                    uploadPublicKey(armoredPublicKey);
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="mt-3 space-y-3">
-                <p className="m-0 text-sm text-white/80">
-                  Remaining people for you to sign:{" "}
-                  <span className="font-semibold text-cyan-200">
-                    {pendingSigningTargets.length}
-                  </span>
-                </p>
-
-                <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                  {pendingSigningTargets.map((participant) => {
-                    const key = snapshot?.publicKeys[participant.clientId];
-                    const isSelected =
-                      participant.clientId === selectedSigningTargetId;
-                    return (
-                      <div
-                        key={participant.clientId}
-                        className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
-                          isSelected
-                            ? "border-cyan-300 bg-cyan-500/10"
-                            : "border-white/15 bg-black/20"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelectedSigningTargetDraft(participant.clientId)
-                          }
-                          className="text-left text-sm font-semibold text-white"
-                        >
-                          {participant.displayName}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!key}
-                          onClick={() => {
-                            if (!key) {
-                              return;
-                            }
-                            const tar = createTarArchive([
-                              {
-                                name: `${normalizeFileName(participant.displayName)}.asc`,
-                                content: key,
-                              },
-                            ]);
-                            downloadBytes(
-                              `${normalizeFileName(participant.displayName)}-public-key.tar`,
-                              tar,
-                            );
-                          }}
-                          className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Download key
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {pendingSigningTargets.length === 0 ? (
-                    <p className="m-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/60">
-                      No remaining signatures needed from you right now.
-                    </p>
-                  ) : null}
-                </div>
-
-                {selectedSigningTarget ? (
-                  <ArmoredDropzone
-                    title={`Upload signed key for ${selectedSigningTarget.displayName}`}
-                    message="Drag signed public key file here"
-                    disabled={connectionState !== "open"}
-                    onFileLoaded={async (armoredSignedKey) => {
-                      setTaskError(null);
-                      if (!armoredSignedKey) {
-                        setTaskError("Dropped file was empty.");
-                        return;
+                      const extractedName =
+                        await extractNameFromArmoredPublicKey(armoredPublicKey);
+                      if (extractedName) {
+                        setDisplayName(extractedName);
                       }
-                      uploadSignedKey(
-                        selectedSigningTarget.clientId,
-                        armoredSignedKey,
-                      );
+
+                      uploadPublicKey(armoredPublicKey);
                     }}
                   />
-                ) : null}
-              </div>
-            )}
-          </section>
+                </div>
+              ) : (
+                <div className="mt-3 flex min-h-0 flex-1 flex-col space-y-3">
+                  <p className="m-0 text-sm text-white/80">
+                    Remaining people for you to sign:{" "}
+                    <span className="font-semibold text-cyan-200">
+                      {pendingSigningTargets.length}
+                    </span>
+                  </p>
 
-          <section className="rounded-2xl border border-white/15 bg-white/5 p-4">
-            <div className="mt-4 grid gap-3">
-              <button
-                type="button"
-                disabled={mySignedPublicKeys.length === 0}
-                onClick={() => {
-                  const tar = createTarArchive(
-                    mySignedPublicKeys.map((file) => ({
-                      name: file.fileName,
-                      content: file.content,
-                    })),
-                  );
-                  downloadBytes(
-                    `${normalizeFileName(displayName)}-signed-public-keys.tar`,
-                    tar,
-                  );
-                }}
-                className="rounded-lg border border-cyan-300/40 bg-cyan-500/20 px-4 py-3 text-left text-sm font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Download signed public keys of mine
-              </button>
-              <button
-                type="button"
-                disabled={allPublicKeys.length === 0}
-                onClick={() => {
-                  const tar = createTarArchive(
-                    allPublicKeys.map((file) => ({
-                      name: file.fileName,
-                      content: file.content,
-                    })),
-                  );
-                  downloadBytes(
-                    `${normalizeFileName(roomCode)}-all-public-keys.tar`,
-                    tar,
-                  );
-                }}
-                className="rounded-lg border border-white/30 bg-white/10 px-4 py-3 text-left text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Download all public keys of this room
-              </button>
-            </div>
-          </section>
+                  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                    {pendingSigningTargets.map((participant) => {
+                      const key = snapshot?.publicKeys[participant.clientId];
+                      const isSelected =
+                        participant.clientId === selectedSigningTargetId;
+                      return (
+                        <div
+                          key={participant.clientId}
+                          className={`flex items-center justify-between rounded-lg border px-3 py-2 ${
+                            isSelected
+                              ? "border-cyan-300 bg-cyan-500/10"
+                              : "border-white/15 bg-black/20"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedSigningTargetDraft(participant.clientId)
+                            }
+                            className="text-left text-sm font-semibold text-white"
+                          >
+                            {participant.displayName}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!key}
+                            onClick={() => {
+                              if (!key) {
+                                return;
+                              }
+                              const tar = createTarArchive([
+                                {
+                                  name: `${normalizeFileName(participant.displayName)}.asc`,
+                                  content: key,
+                                },
+                              ]);
+                              downloadBytes(
+                                `${normalizeFileName(participant.displayName)}-public-key.tar`,
+                                tar,
+                              );
+                            }}
+                            className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {pendingSigningTargets.length === 0 ? (
+                      <p className="m-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/60">
+                        No remaining signatures needed from you right now.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {selectedSigningTarget ? (
+                    <>
+                      <div className="rounded-lg border border-white/15 bg-black/25 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="m-0 text-sm text-white/80">
+                            Sign <span className="font-semibold">{selectedSigningTarget.displayName}</span> locally:
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const targetKey = snapshot?.publicKeys[selectedSigningTarget.clientId];
+                              if (!targetKey) {
+                                return;
+                              }
+                              const tar = createTarArchive([
+                                {
+                                  name: `${normalizeFileName(selectedSigningTarget.displayName)}.asc`,
+                                  content: targetKey,
+                                },
+                              ]);
+                              downloadBytes(
+                                `${normalizeFileName(selectedSigningTarget.displayName)}-public-key.tar`,
+                                tar,
+                              );
+                            }}
+                            className="rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs text-white"
+                          >
+                            Download key
+                          </button>
+                        </div>
+                        <pre className="m-0 overflow-x-auto rounded-md bg-black/30 p-2 text-xs text-white/75"><code>{`gpg --import ./TARGET_PUBLIC_KEY.asc
+gpg --sign-key "TARGET_USER_ID_OR_FINGERPRINT"
+gpg --armor --export "TARGET_USER_ID_OR_FINGERPRINT" > signed-target.asc`}</code></pre>
+                      </div>
+                      <ArmoredDropzone
+                        title={`Upload signed key for ${selectedSigningTarget.displayName}`}
+                        message="Drag signed public key file here"
+                        stretch
+                        disabled={connectionState !== "open"}
+                        onFileLoaded={async (armoredSignedKey) => {
+                          setTaskError(null);
+                          if (!armoredSignedKey) {
+                            setTaskError("Dropped file was empty.");
+                            return;
+                          }
+                          if (containsPrivateKeyBlock(armoredSignedKey)) {
+                            window.alert(
+                              "Oops, you attempted to upload your private key. Use your public key instead.",
+                            );
+                            return;
+                          }
+                          uploadSignedKey(
+                            selectedSigningTarget.clientId,
+                            armoredSignedKey,
+                          );
+                        }}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-white/15 bg-white/5 p-4">
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  disabled={mySignedPublicKeys.length === 0}
+                  onClick={() => {
+                    const tar = createTarArchive(
+                      mySignedPublicKeys.map((file) => ({
+                        name: file.fileName,
+                        content: file.content,
+                      })),
+                    );
+                    downloadBytes(
+                      `${normalizeFileName(displayName)}-signed-public-keys.tar`,
+                      tar,
+                    );
+                  }}
+                  className="rounded-lg border border-cyan-300/40 bg-cyan-500/20 px-4 py-3 text-center text-sm font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Download signed public keys of mine
+                </button>
+                <button
+                  type="button"
+                  disabled={allPublicKeys.length === 0}
+                  onClick={() => {
+                    const tar = createTarArchive(
+                      allPublicKeys.map((file) => ({
+                        name: file.fileName,
+                        content: file.content,
+                      })),
+                    );
+                    downloadBytes(
+                      `${normalizeFileName(roomCode)}-all-public-keys.tar`,
+                      tar,
+                    );
+                  }}
+                  className="rounded-lg border border-white/30 bg-white/10 px-4 py-3 text-center text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Download all public keys of this room
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
       </section>
     </main>

@@ -50,8 +50,8 @@ export function Graph({ snapshot, selfClientId }: Props) {
   }, [nodePositions]);
 
   return (
-    <section className="h-full rounded-2xl border border-white/15 bg-white/5 p-4">
-      <div className="mt-4 h-[540px] rounded-xl border border-white/10 bg-black/25 p-2">
+    <section className="flex min-h-105 flex-col rounded-2xl border border-white/15 bg-white/5 p-4 lg:h-full lg:min-h-0">
+      <div className="mt-4 h-90 rounded-xl border border-white/10 bg-black/25 p-2 lg:h-auto lg:min-h-0 lg:flex-1">
         {snapshot.participants.length === 0 ? (
           <p className="m-0 p-4 text-sm text-white/60">
             Waiting for participants...

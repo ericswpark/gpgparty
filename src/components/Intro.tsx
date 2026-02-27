@@ -35,11 +35,10 @@ export function Intro({ value, setValue }: Props) {
       >
         <h1
           id="fingerprint-title"
-          className="m-0 text-2xl font-semibold leading-tight text-white sm:text-3xl"
+          className="m-0 mb-8 text-2xl font-semibold leading-tight text-white sm:text-3xl"
         >
           gpgparty
         </h1>
-        <p className="mt-3 mb-4 text-sm text-white/80 sm:text-base">Join an existing room or create a new one.</p>
         <label className="sr-only" htmlFor="partykit-room-input">
           Room code
         </label>
@@ -59,7 +58,7 @@ export function Intro({ value, setValue }: Props) {
               }
             }}
             className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 outline-none ring-0 transition focus:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300/70 sm:text-base"
-            placeholder="e.g. sf-meetup-2026"
+            placeholder="Room code"
           />
           <button
             type="button"

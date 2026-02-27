@@ -4,6 +4,7 @@ type Props = {
   title: string;
   message: string;
   disabled?: boolean;
+  stretch?: boolean;
   onFileLoaded: (armoredText: string, fileName: string) => Promise<void> | void;
 };
 
@@ -19,7 +20,13 @@ async function readFirstDroppedFile(files: FileList): Promise<{ text: string; fi
   };
 }
 
-export function ArmoredDropzone({ title, message, disabled = false, onFileLoaded }: Props) {
+export function ArmoredDropzone({
+  title,
+  message,
+  disabled = false,
+  stretch = false,
+  onFileLoaded,
+}: Props) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
@@ -49,7 +56,7 @@ export function ArmoredDropzone({ title, message, disabled = false, onFileLoaded
   };
 
   return (
-    <section className="rounded-xl border border-white/15 bg-white/5 p-4">
+    <section className={`rounded-xl border border-white/15 bg-white/5 p-4 ${stretch ? "flex h-full min-h-0 flex-col" : ""}`}>
       <h3 className="m-0 text-base font-semibold text-white">{title}</h3>
       <div
         role="button"
@@ -90,7 +97,7 @@ export function ArmoredDropzone({ title, message, disabled = false, onFileLoaded
             : isDragActive
               ? "border-cyan-300 bg-cyan-500/15 text-cyan-100"
               : "cursor-pointer border-white/30 text-white/75"
-        }`}
+        } ${stretch ? "grid min-h-0 flex-1 place-items-center" : ""}`}
       >
         {isProcessing ? "Processing..." : message}
       </div>
@@ -113,4 +120,3 @@ export function ArmoredDropzone({ title, message, disabled = false, onFileLoaded
     </section>
   );
 }
-

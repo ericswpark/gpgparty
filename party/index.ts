@@ -125,6 +125,10 @@ export default class Server implements Party.Server {
         }
 
         participant.publicKey = armoredKey;
+        participant.displayName = this.ensureUniquePublicKeyDisplayName(
+          participant.displayName,
+          participant.clientId
+        );
         participant.updatedAt = Date.now();
         this.broadcastSnapshot();
         return;
@@ -294,6 +298,33 @@ export default class Server implements Party.Server {
     }
 
     return trimmed;
+  }
+
+  private ensureUniquePublicKeyDisplayName(displayName: string, clientId: string): string {
+    const baseName = this.getBaseDisplayName(displayName);
+    const normalizedTaken = new Set(
+      [...this.participants.values()]
+        .filter((participant) => participant.clientId !== clientId && participant.publicKey !== null)
+        .map((participant) => participant.displayName.toLocaleLowerCase())
+    );
+
+    if (!normalizedTaken.has(baseName.toLocaleLowerCase())) {
+      return baseName;
+    }
+
+    let index = 1;
+    while (true) {
+      const candidate = `${baseName} (${index})`;
+      if (!normalizedTaken.has(candidate.toLocaleLowerCase())) {
+        return candidate;
+      }
+      index += 1;
+    }
+  }
+
+  private getBaseDisplayName(displayName: string): string {
+    const stripped = displayName.replace(/\s\(\d+\)\s*$/, "").trim();
+    return stripped || "Anonymous";
   }
 
   private isClientMessage(value: unknown): value is ClientMessage {
